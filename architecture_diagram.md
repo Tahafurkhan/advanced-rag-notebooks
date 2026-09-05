@@ -1,73 +1,96 @@
-                         USER QUESTION
-                              │
-                              ▼
-                    ┌──────────────────┐
-                    │  ROUTE QUESTION  │
-                    └────────┬─────────┘
+                    ┌──────────────────────────────┐
+                    │         USER QUERY           │
+                    │                              │
+                    │ "How does Self-RAG improve  │
+                    │       Agentic RAG?"          │
+                    └──────────────┬───────────────┘
+                                   │
+                                   ▼
+                    ┌──────────────────────────────┐
+                    │       AGENTIC ROUTER          │
+                    │          LangGraph            │
+                    │                              │
+                    │  KB  ───────────────┐        │
+                    │  Direct              │        │
+                    └──────┬───────────────┘        │
+                           │                        │
+                           │ KB                     │ Direct
+                           ▼                        ▼
+              ┌──────────────────────┐    ┌──────────────────────┐
+              │    KB RETRIEVER      │    │    DIRECT LLM        │
+              │                      │    │      RESPONSE        │
+              │      Pinecone        │    └──────────┬───────────┘
+              └──────────┬───────────┘               │
+                         │                           ▼
+                         ▼                          END
+              ┌──────────────────────┐
+              │   KB EVIDENCE GRADER │
+              │                      │
+              │ Grade: good / weak   │
+              │ Score: 0 → 1         │
+              │ Reason                │
+              └──────────┬───────────┘
+                         │
+                 ┌───────┴────────┐
+                 │                │
+               GOOD              WEAK
+                 │                │
+                 ▼                ▼
+       ┌─────────────────┐  ┌──────────────────────┐
+       │ GENERATE FROM   │  │   CRAG QUERY         │
+       │      KB         │  │      REWRITER        │
+       └────────┬────────┘  └──────────┬───────────┘
+                │                      │
+                │                      ▼
+                │               ┌──────────────┐
+                │               │ KB RETRIEVAL │
+                │               │    RETRY     │
+                │               └──────┬───────┘
+                │                      │
+                │               ┌──────▼────────────┐
+                │               │ KB EVIDENCE      │
+                │               │     GRADER        │
+                │               └──────┬────────────┘
+                │                      │
+                │                 Still weak
+                │                      │
+                │                      ▼
+                │               ┌──────────────┐
+                │               │  WEB SEARCH  │
+                │               │    Tavily    │
+                │               └──────┬───────┘
+                │                      │
+                │                      ▼
+                │               ┌──────────────┐
+                │               │ WEB EVIDENCE │
+                │               │    GRADER    │
+                │               └──────┬───────┘
+                │                      │
+                │                     GOOD
+                │                      │
+                │                      ▼
+                │               ┌──────────────┐
+                │               │ WEB ANSWER   │
+                │               │  GENERATOR   │
+                │               └──────┬───────┘
+                │                      │
+                └──────────┬───────────┘
+                           │
+                           ▼
+                ┌──────────────────────────┐
+                │      SELF-RAG GRADER     │
+                │                          │
+                │  Groundedness Score      │
+                │  Completeness Score      │
+                │  Citation Score          │
+                │  Decision: PASS / RETRY  │
+                └────────────┬─────────────┘
                              │
-                    ┌────────┴────────┐
-                    │                 │
-                 DIRECT               KB
-                    │                 │
-                    ▼                 ▼
-              Direct Answer      Retrieve KB
-                                      │
-                                      ▼
-                             ┌─────────────────┐
-                             │  CRAG EVALUATOR │
-                             └────────┬────────┘
-                                      │
-                         ┌────────────┴────────────┐
-                         │                         │
-                       GOOD                      WEAK
-                         │                         │
-                         │                  Rewrite Query
-                         │                         │
-                         │                    Retrieve KB
-                         │                         │
-                         │                    Grade Again
-                         │                         │
-                         │                    ┌────┴────┐
-                         │                    │         │
-                         │                  GOOD      WEAK
-                         │                    │         │
-                         │                    │       Web Search
-                         │                    │         │
-                         │                    │    Grade Web
-                         │                    │         │
-                         └────────────────────┴─────────┘
-                                      │
-                                      ▼
-                              GENERATE ANSWER
-                                      │
-                                      ▼
-                            ┌──────────────────┐
-                            │  SELF-RAG CHECK  │
-                            └────────┬─────────┘
-                                     │
-                           ┌─────────┴─────────┐
-                           │                   │
-                         PASS                FAIL
-                           │                   │
-                           ▼                   ▼
-                          END             SELF-CORRECT
-                                               │
-                                      ┌────────┴────────┐
-                                      │                 │
-                                Rewrite Query     Improve Retrieval
-                                      │                 │
-                                      └────────┬────────┘
-                                               │
-                                               ▼
-                                         Retrieve Again
-                                               │
-                                               ▼
-                                            Generate
-                                               │
-                                               ▼
-                                         Self-RAG Check
-                                               │
-                                      max retries reached?
-                                               │
-                                               ▼
-                                              END
+                     ┌───────┴────────┐
+                     │                │
+                   PASS              RETRY
+                     │                │
+                     ▼                ▼
+                  ┌─────┐       Query Rewrite /
+                  │ END │       Retrieve Again
+                  └─────┘
